@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ArrowRight, Check, Heart, LockKeyhole, RotateCcw, Sparkles, Star, X } from 'lucide-react';
 
@@ -62,29 +62,30 @@ export default function Home() {
   const [activeMessage, setActiveMessage] = useState<number | null>(null);
   const [heartOpened, setHeartOpened] = useState(false);
   const [loveVisible, setLoveVisible] = useState(false);
-  const [photo, setPhoto] = useState('/anshuuu.jpeg');
-  const [photoError, setPhotoError] = useState(false);
+  const photos = [
+    '/anshuuu.jpeg',
+    '/ansh.jpeg',
+    '/anshii.jpeg',
+    
+  ];
+
+  const [currentPhoto, setCurrentPhoto] = useState(0);
   const [secretOpen, setSecretOpen] = useState(false);
-  const photoInput = useRef<HTMLInputElement>(null);
 
+  // Show each photo for 2.5 seconds, then reveal the love message.
   useEffect(() => {
-    if (scene !== 'final' || !heartOpened) return;
-    const timer = window.setTimeout(() => setLoveVisible(true), reduced ? 100 : 2200);
-    return () => window.clearTimeout(timer);
-  }, [scene, heartOpened, reduced]);
+    if (scene !== 'final' || !heartOpened || loveVisible) return;
 
-  function selectPhoto(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file || !file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setPhoto(reader.result);
-        setPhotoError(false);
+    const timer = window.setTimeout(() => {
+      if (currentPhoto < photos.length - 1) {
+        setCurrentPhoto((current) => current + 1);
+      } else {
+        setLoveVisible(true);
       }
-    };
-    reader.readAsDataURL(file);
-  }
+    }, reduced ? 1200 : 1500);
+
+    return () => window.clearTimeout(timer);
+  }, [scene, heartOpened, currentPhoto, loveVisible, reduced]);
 
   function openMessage(index: number) {
     if (index > unlocked) return;
@@ -102,6 +103,7 @@ export default function Home() {
     setUnlocked(0);
     setActiveMessage(null);
     setHeartOpened(false);
+    setCurrentPhoto(0);
     setLoveVisible(false);
     setSecretOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -172,21 +174,28 @@ export default function Home() {
             {!heartOpened ? <>
               <h2>Okay, one last thing…<br /><em>from my heart.</em></h2>
               <p className="final-intro">Tap the heart. I kept the best part for last. 💗</p>
-              <motion.button className="big-heart-button" onClick={() => setHeartOpened(true)} aria-label="Open the heart" whileHover={{ scale: 1.04 }} whileTap={{ scale: .96 }} animate={reduced ? {} : { y: [0, -6, 0] }} transition={{ duration: 2.7, repeat: Infinity }}>
+              <motion.button className="big-heart-button" onClick={() => { setCurrentPhoto(0); setLoveVisible(false); setHeartOpened(true); }} aria-label="Open the heart" whileHover={{ scale: 1.04 }} whileTap={{ scale: .96 }} animate={reduced ? {} : { y: [0, -6, 0] }} transition={{ duration: 2.7, repeat: Infinity }}>
                 <span className="heart-aura" /><Heart size={118} fill="currentColor" strokeWidth={.8} /><span className="heart-button-caption">tap to open ♡</span>
               </motion.button>
               <div className="speech-bubble final-bubble">Abhi-abhi thoda sa blush karna allowed hai. 🤭</div>
             </> : <>
               <div className="photo-reveal-stage">
-                <motion.div className="photo-frame" initial={{ opacity: 0, scale: .55, rotate: -8 }} animate={{ opacity: 1, scale: 1, rotate: -2 }} transition={{ duration: .9, delay: .25, ease }}>
-                  <img src={photo} alt="A favourite photo" onError={() => setPhotoError(true)} />
-                  {photoError && <span className="photo-fallback">Your favourite photo goes here ♡</span>}
-                  <span className="photo-caption">my favourite person ♡</span>
-                </motion.div>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentPhoto}
+                    className="photo-frame"
+                    initial={{ opacity: 0, scale: .72, rotate: -8, y: 18 }}
+                    animate={{ opacity: 1, scale: 1, rotate: -2, y: 0 }}
+                    exit={{ opacity: 0, scale: .82, rotate: 7, y: -12 }}
+                    transition={{ duration: .65, ease }}
+                  >
+                    <img src={photos[currentPhoto]} alt={`Our memory ${currentPhoto + 1}`} />
+                    <span className="photo-caption">{currentPhoto + 1} / {photos.length} · my favourite person ♡</span>
+                  </motion.div>
+                </AnimatePresence>
                 <motion.div className="heart-petal petal-left" initial={{ x: 0, rotate: 0, opacity: 1 }} animate={{ x: '-145%', rotate: -28, opacity: 0 }} transition={{ duration: 1.35, ease }}><Heart fill="currentColor" /></motion.div>
                 <motion.div className="heart-petal petal-right" initial={{ x: 0, rotate: 0, opacity: 1 }} animate={{ x: '145%', rotate: 28, opacity: 0 }} transition={{ duration: 1.35, ease }}><Heart fill="currentColor" /></motion.div>
               </div>
-              <input ref={photoInput} className="visually-hidden" type="file" accept="image/*" onChange={selectPhoto} />
               <AnimatePresence>{loveVisible && <motion.div className="love-reveal" initial={{ opacity: 0, y: 22, scale: .94 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: .9, ease }}><span className="eyebrow">AND I MEAN EVERY WORD</span><h1>I Love You <em>♡</em></h1><p>Tum mere liye bahut special ho.<br />Aur tumhare saath aur bhi khoobsurat memories banana chahta hoon. ✨</p><button className="secret-link" onClick={() => setSecretOpen(true)}><LockKeyhole size={13} /> ek tiny secret?</button></motion.div>}</AnimatePresence>
               {!loveVisible && <p className="waiting-note">a little magic is finding its way… ✨</p>}
             </>}
@@ -219,7 +228,17 @@ export default function Home() {
             <div className="secret-big-heart"><Heart fill="currentColor" /></div>
             <span className="eyebrow">JUST BETWEEN US</span>
             <h3>Ek chhoti si baat…</h3>
-            <p className="message-body">Agar main ye moment dobara bana sakta, toh har baar tumhare liye hi banata. Thank you for being you. ❤️</p>
+            <p className="message-body">Baby, ❤️
+
+Main bas itna chahta hoon ki tum hamesha khush raho aur kabhi tumhe kisi cheez ki wajah se dukhi na hona pade. I know life mein ups and downs aayenge, but I want us to face everything together.
+
+We will work on things, understand each other and grow together. Aur future mein kabhi mujhse koi galti ho, toh please mujhe batana. Main thoda baklol hoon 😂, but I promise ki apni galti samajhne aur sudharne ki poori koshish karunga.
+
+I don't want to lose what we have. I genuinely want to make this work.
+
+Lots of love from me, baby. ❤️
+
+</p>
             <button className="secondary-button" onClick={() => setSecretOpen(false)}>Awww, okay ♡</button>
           </motion.div>
         </motion.div>}
